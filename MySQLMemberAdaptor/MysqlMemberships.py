@@ -578,10 +578,10 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self._prodServerConnection
 	if self.getTableType is 'flat':
         	self.cursor.execute("""INSERT INTO mailman_mysql (listname,address,user_options,password,lang,digest,delivery_status) values ('%s','%s',0,'%s','%s','%s','%s')"""
-			%( self.__mlist.internal_name() , MySQLdb.escape_string(member), password, language, digest, MemberAdaptor.UNKNOWN) )
+			%( self.__mlist.internal_name() , MySQLdb.escape_string(member), password, language, digest, MemberAdaptor.ENABLED) )
 	else:
         	self.cursor.execute("""INSERT INTO %s (address,user_options,password,lang,digest,delivery_status) values ('%s',0,'%s','%s','%s','%s')"""
-			%( self.__mlist.internal_name() , MySQLdb.escape_string(member), password, language, digest, MemberAdaptor.UNKNOWN) )
+			%( self.__mlist.internal_name() , MySQLdb.escape_string(member), password, language, digest, MemberAdaptor.ENABLED) )
         if realname:
             self.setMemberName(member, realname)
 
