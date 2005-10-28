@@ -81,7 +81,7 @@ and name it 'mailman_mysql'.
 CREATE TABLE test (
   address varchar(255) NOT NULL,
 # Add this if you want to use the 'flat' mode of operation.
-# listname varchar(255) NOT NULL,
+# listname varchar(100) NOT NULL,
   hide enum('Y','N') NOT NULL default 'N',
   nomail enum('Y','N') NOT NULL default 'N',
   ack enum('Y','N') NOT NULL default 'Y',
