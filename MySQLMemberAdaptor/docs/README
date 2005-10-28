@@ -1,0 +1,189 @@
+ABOUT
+
+This is an incomplete, work in progress MySQL "plugin" for Mailman list 
+membership handling, although it seems to work.
+
+This "plugin" may destroy your server, soul, scalp, house, and life. Please
+use it with caution.
+
+WARNING
+
+This Membership Adaptor has not been extensively tested as yet, so it may cause
+you to get errors on the web interface of Mailman, or receive loads of error
+messages via cron.
+
+If you do not understand the internals of Mailman, and at least a tiny bit
+of the Python programming language, don't read any further. Just forget the
+idea, it's probably going to end up more trouble than its worth.
+
+Specifically at this time, the "plugin" uses connection cacheing, but it isn't
+thoroughly tested (eg. not for multiple lists, etc), so keep a close eye on
+"show processlist" on your MySQL server to make sure that it doesn't get
+overloaded with connections.
+
+The bounce and delivery status are still largely unproven, but are mostly okay
+now from what little testing I have been able to do.
+
+Lastly, if you change the username/password/hostname/dbname for the list member
+information, you will probably need to restart mailman for the changes to 
+take effect.
+
+All that said, thanks to the people who have offered help, testing time, or
+contributed code to this thing, without whom the latest version may well not
+have seen the light of day.
+
+Special thanks to oRe Net, without who's resources, even the very first version
+would not have seen the light of day. This work is supported, but in no way
+guaranteed or warrantied by oRe Net. http://www.orenet.co.uk/
+
+
+INSTALL
+
+There are two modes of operation of this patch, 'flat' and 'wide'. In 'flat'
+mode, the data structure is flat, with a field in the tables storing the name
+of the list to which the membership applies, and in 'wide' mode, there has to
+be one table per list. The choice is yours. The data structure given below
+should be compatible with both versions (in 'flat' the listname field is used,
+and there's only one table which you should name 'mailman_mysql', but in
+'wide' mode, I *think* it will work as-is, but just leave the field blank).
+
+mysql> describe test;
++---------------------------+---------------+------+-----+---------+-------+
+| Field                     | Type          | Null | Key | Default | Extra |
++---------------------------+---------------+------+-----+---------+-------+
+| address                   | varchar(255)  |      | PRI |         |       |
+| listname                  | varchar(255)  |      | PRI |         |       |
+| hide                      | enum('Y','N') |      |     | N       |       |
+| nomail                    | enum('Y','N') |      |     | N       |       |
+| ack                       | enum('Y','N') |      |     | Y       |       |
+| not_metoo                 | enum('Y','N') |      |     | Y       |       |
+| digest                    | enum('Y','N') |      |     | N       |       |
+| plain                     | enum('Y','N') |      |     | N       |       |
+| password                  | varchar(255)  |      |     | '!'     |       |
+| lang                      | varchar(255)  |      |     | en      |       |
+| name                      | varchar(255)  | YES  |     | NULL    |       |
+| one_last_digest           | enum('Y','N') |      |     | N       |       |
+| user_options              | bigint(20)    |      |     | 0       |       |
+| delivery_status           | int(10)       |      |     | 0       |       |
+| topics_userinterest       | varchar(255)  | YES  |     | NULL    |       |
+| delivery_status_timestamp | varchar(255)  |      |     | None    |       |
+| bi_cookie                 | varchar(255)  | YES  |     | NULL    |       |
+| bi_score                  | double        |      |     | 0       |       |
+| bi_noticesleft            | double        |      |     | 0       |       |
+| bi_lastnotice             | date          |      |     | '0000-00-00'    |
+| bi_date                   | date          |      |     | '0000-00-00'    |
++---------------------------+---------------+------+-----+---------+-------+
+
+This SQL should create such a table for you, for a list named 'test', if using
+the 'wide' format. If using the 'flat' format, you should have only one table,
+and name it 'mailman_mysql'.
+
+CREATE TABLE test (
+  address varchar(255) NOT NULL,
+# Add this if you want to use the 'flat' mode of operation.
+# listname varchar(255) NOT NULL,
+  hide enum('Y','N') NOT NULL default 'N',
+  nomail enum('Y','N') NOT NULL default 'N',
+  ack enum('Y','N') NOT NULL default 'Y',
+  not_metoo enum('Y','N') NOT NULL default 'Y',
+  digest enum('Y','N') NOT NULL default 'N',
+  plain enum('Y','N') NOT NULL default 'N',
+  password varchar(255) NOT NULL default '!',
+  lang varchar(255) NOT NULL default 'en',
+  name varchar(255) default NULL,
+  one_last_digest enum('Y','N') NOT NULL default 'N',
+  user_options bigint(20) NOT NULL default 0,
+  delivery_status int(10) NOT NULL default 0,
+  topics_userinterest varchar(255) default NULL,
+  delivery_status_timestamp varchar(255) NOT NULL default "None",
+  bi_cookie varchar(255) default NULL,
+  bi_score double NOT NULL default '0',
+  bi_noticesleft double NOT NULL default '0',
+  bi_lastnotice date NOT NULL default '0000-00-00',
+  bi_date date NOT NULL default '0000-00-00',
+  PRIMARY KEY  (address)
+# Change the primary key to the below for 'flat' mode.
+#PRIMARY KEY  (listname, address)
+) TYPE=MyISAM;
+
+For the time being (until another API is done, or "newlist" is hacked to
+support the base list information in MySQL), you will need to run "newlist"
+as normal to create the list. The list tables should be created automatically
+when they are first accessed. If this does not happen, you can create them
+manually with the above SQL.
+
+Once you've created the lists and tables, you will need to install 
+MysqlMemberships.py into your Mailman source code directory (usually
+/var/mailman/Mailman).
+
+The configuration for the Membership Adaptor is performed, as usual, in 
+mm_cfg.py, with the following configuration options:
+
+## Mysql MemberAdaptor information.
+MYSQL_MEMBER_DB_NAME = "<db name>"
+MYSQL_MEMBER_DB_USER = "<db username>"
+MYSQL_MEMBER_DB_PASS = "<db password>"
+MYSQL_MEMBER_DB_HOST = "<db host>"
+MYSQL_MEMBER_TABLE_TYPE = {wide|flat}
+
+You may be able to omit the MYSQL_MEMBER_TABLE_TYPE altogether (for backward
+compatibility) - although testing of this has proved inconclusive so far -,
+or you can set it to 'flat' or 'wide', depending on the table structure you
+wish to use. The details of this are described earlier in this document. 
+
+With this done, you will need to activate the Mysql Membership Adaptor,
+you can try the provided patch, or do this manually by modifying MailList.py
+on lines 65 and 95 to change OldStyleMemberships to MysqlMemberships. 
+
+The rest of the setup of Mailman can be done in the normal fashion, or if you
+wish to do so, you can set up the members manually in the database. In order
+to do the latter, you should ensure that bounce_info and delivery_status
+fields are set to 0 to begin with.  The other fields should be self
+explanatory.
+
+Finally, you can modify the value of the MYSQL_MEMBER_DB_VERBOSE variable 
+in the mm_cfg.py file to gain some additional information, if you so desire.
+
+ADDITIONAL INFORMATION
+
+This project was partially prompted by the UK's new antispam laws (*), which 
+require much greater recording of subscribe/unsubscribe information.
+
+Using MySQL it is trivial to alter the table structure used here to add
+"ip_address_subscribed_from", "ip_address_confirmed_from",
+"date_subscribe_requested", "date_subscribe_confirmed", and many other
+fields to give you the evidence to prove that a user was legitimately
+subscribed to your mailing lists.
+
+If you have users on your mailing lists who were not legitimately subscribed,
+well, you deserve everything you get.
+
+Ref: http://news.bbc.co.uk/2/hi/technology/3120628.stm
+
+MIGRATION
+
+You could use the included migration utility from "TheSin":
+<thesin@NOSPAMTHANKS.southofheaven.org>
+
+Or you could do it the hard way...
+
+The migration from old-style Mailman membership databases is left as an
+exercise for the reader.
+
+The following will migrate the address list at least, although this is
+obviously suboptimal (substituting 'listname' for the name of each of your
+lists, of course!):
+
+for THIS in `/var/mailman/bin/list_members -r listname`; \
+	do echo INSERT INTO listname \(address\) VALUES \(\"$THIS\"\); \
+done > /tmp/listname
+mysql -u root mailman < /tmp/listname
+
+If anyone comes up with a better method (python script?), then I'd certainly
+be interested to include it here.
+
+WHO
+
+Kev Green, kyrian(at)ore.org, oRe Net (http://www.orenet.co.uk), 2003/11/04
+
+$Revision: 1.29 $
