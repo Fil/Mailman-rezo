@@ -970,8 +970,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             except MySQLdb.Warning, e:
                 syslog("error", "MySQL update warning setting Delivery Status info to '%s' for member '%s' in setBounceInfo()" % (status, member) )
         else:
+            self._prodServerConnection
             try:
-                self._prodServerConnection
                 # Hack the dates to work with MySQL.
                 lnsql=(info.lastnotice[0],info.lastnotice[1],info.lastnotice[2],0,0,0,0,0,0)
                 lnsql = time.strftime("%Y-%m-%d", lnsql)
