@@ -825,8 +825,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                                 WHERE address = '%s'"""
                                 %( self.__mlist.internal_name() , flag,
                                 MySQLdb.escape_string(memberkey) ) )
-                except MySQLdb.Warning, e:
-                    syslog("error", "MySQL update warning (%s): %s" % (e.args[0], e.args[1]) )
+            except MySQLdb.Warning, e:
+                syslog("error", "MySQL update warning (%s): %s" % (e.args[0], e.args[1]) )
         else:
             # Otherwise, unset it...
             try:
