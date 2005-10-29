@@ -89,7 +89,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
 	# To make sure we always have the table we need...
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("""CREATE TABLE IF NOT EXISTS mailman_mysql (
   listname varchar(255) NOT NULL,
   address varchar(255) NOT NULL,
@@ -175,7 +175,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     # Find out whether we should be using 'flat' or 'wide' table type.
     # for backwards compatibility, the default is 'wide'
-    def getTableType():
+    def getTableType(me):
 	if mm_cfg.MYSQL_MEMBER_TABLE_TYPE:
 		if mm_cfg.MYSQL_MEMBER_TABLE_TYPE is 'flat':
 			return 'flat'
@@ -189,7 +189,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # SELECT address FROM <listname>
     def getMembers(self):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT address FROM mailman_mysql WHERE listname='%s'" %( self.__mlist.internal_name() ) )
 	else:
 		self.cursor.execute ("SELECT address FROM %s" %( self.__mlist.internal_name() ) )
@@ -205,7 +205,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # SELECT address FROM <listname> WHERE digest = "N"
     def getRegularMemberKeys(self):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute("SELECT address FROM mailman_mysql WHERE digest = 'N' AND listname='%s'" % (self.__mlist.internal_name()) )
 	else:
 		self.cursor.execute("SELECT address FROM %s WHERE digest = 'N'" % (self.__mlist.internal_name()) )
@@ -221,7 +221,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # SELECT address FROM <listname> WHERE digest = "Y"
     def getDigestMemberKeys(self):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT address FROM mailman_mysql WHERE digest = 'Y' AND listname='%s'"
 			% ( self.__mlist.internal_name()))
 	else:
@@ -240,7 +240,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         lcmember = member.lower()
         missing = []
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT digest FROM mailman_mysql WHERE listname='%s' AND address = '%s'" 
 			%( self.__mlist.internal_name() , MySQLdb.escape_string(lcmember) ) )
 	else:
@@ -266,7 +266,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def isMember(self, member):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT * FROM mailman_mysql WHERE listname='%s' AND address = '%s'" 
 			%( self.__mlist.internal_name() , 
 			MySQLdb.escape_string(member)) )
@@ -302,7 +302,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # SELECT password FROM <listname> WHERE address = member.lower()
     def getMemberPassword(self, member):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT password FROM mailman_mysql WHERE listname='%s' AND address = '%s'"
 			%( self.__mlist.internal_name(),
 			MySQLdb.escape_string(member) ) )
@@ -334,7 +334,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getMemberLanguage(self, member):
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
 	   		self.cursor.execute("SELECT lang FROM mailman_mysql WHERE listname='%s' AND address = '%s'"
 			%( self.__mlist.internal_name(),
 			MySQLdb.escape_string(member) ) )
@@ -367,7 +367,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             cpaddr, where = self.__get_cp_member(member)
             return where == ISDIGEST
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute("SELECT user_options FROM mailman_mysql WHERE listname='%s' AND address = '%s'" 
 			% (self.__mlist.internal_name(), 
 			MySQLdb.escape_string(member.lower())) )
@@ -383,7 +383,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getMemberName(self, member):
         self.__assertIsMember(member)
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT name FROM mailman_mysql WHERE listname='%s' AND address = '%s'"
 			%( self.__mlist.internal_name(), 
 			MySQLdb.escape_string(member) ) )
@@ -398,7 +398,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getMemberTopics(self, member):
         self.__assertIsMember(member)
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT topics_userinterest FROM mailman_mysql WHERE listname = '%s' AND address = '%s'"
 			%( self.__mlist.internal_name(), 
 			MySQLdb.escape_string(member) ) )
@@ -413,7 +413,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getDeliveryStatus(self, member):
         self.__assertIsMember(member)
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("SELECT delivery_status FROM mailman_mysql WHERE listname = '%s' AND address = '%s'"
 			%( self.__mlist.internal_name(), 
 			MySQLdb.escape_string(member) ) )
@@ -433,7 +433,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getDeliveryStatusChangeTime(self, member):
         self.__assertIsMember(member)
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute("SELECT delivery_status_timestamp"
 			" FROM mailman_mysql WHERE listname = '%s' AND address = '%s'"
 			%( self.__mlist.internal_name() , 
@@ -461,7 +461,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def getBouncingMembers(self):
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute ("""SELECT bi_cookie,bi_score,bi_noticesleft,
 			UNIX_TIMESTAMP(bi_lastnotice),UNIX_TIMESTAMP(bi_date),address
 				 FROM mailman_mysql
@@ -489,7 +489,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getBounceInfo(self, member):
         self.__assertIsMember(member)
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
 		self.cursor.execute("""SELECT bi_cookie,
 			bi_score,
 			bi_noticesleft,
@@ -576,7 +576,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         # and Set the member's default set of options: Using "0" for now, until
 	# I work out a better way.
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
         	self.cursor.execute("""INSERT INTO mailman_mysql (listname,address,user_options,password,lang,digest,delivery_status) values ('%s','%s',0,'%s','%s','%s','%s')"""
 			%( self.__mlist.internal_name() , MySQLdb.escape_string(member), password, language, digest, MemberAdaptor.ENABLED) )
 	else:
@@ -602,7 +602,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 	# Not sure about whether we need to implement all of the above, but
 	# from the SQL sense, this ought to do it.
         self._prodServerConnection
-	if self.getTableType is 'flat':
+	if self.getTableType() is 'flat':
         	self.cursor.execute("""DELETE FROM mailman_mysql WHERE listname = '%s' AND address = '%s'"""
 			%( self.__mlist.internal_name() , memberkey) )
 	else:
@@ -619,7 +619,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 # 	the trick.
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
 	        	self.cursor.execute(
 				"""UPDATE mailman_mysql SET address = '%s'
 				WHERE listname='%s' AND address = '%s'"""
@@ -658,7 +658,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self.__assertIsMember(memberkey)
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
         		self.cursor.execute("""UPDATE mailman_mysql SET password='%s'
 				WHERE listname='%s' address = '%s'"""
 			%( password, 
@@ -677,7 +677,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self.__assertIsMember(memberkey)
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
         		self.cursor.execute("""UPDATE mailman_mysql SET lang='%s'
 				WHERE listname='%s' AND address = '%s'"""
 			%( language, 
@@ -707,7 +707,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                     raise Errors.CantDigestError
 		# The user is turning on digest mode
         	self._prodServerConnection
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
 			self.cursor.execute ("SELECT digest "
 				"FROM mailman_mysql"
 				"WHERE listname='%s' AND address = '%s'"
@@ -732,7 +732,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 		# If we've got past all this, actually turn on digest mode.
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
 				self.cursor.execute("""UPDATE mailman_mysql SET digest='Y'
 				WHERE listname='%s' AND address = '%s'"""
 				%( self.__mlist.internal_name() ,
@@ -750,7 +750,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                     raise Errors.MustDigestError
                 # The user is turning off digest mode
         	self._prodServerConnection
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
 			self.cursor.execute ("SELECT digest "
 				"FROM mailman_mysql "
 				"WHERE listname='%s' AND address = '%s'"
@@ -777,7 +777,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 		# mail.
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
 				self.cursor.execute("""UPDATE mailman_mysql SET digest='N',
 					one_last_digest='Y'
 					WHERE listname='%s' AND address = '%s'"""
@@ -812,7 +812,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 	if value:
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
 				self.cursor.execute( """UPDATE mailman_mysql
 				SET user_options = user_options | %s
 				WHERE listname = '%s' AND address = '%s'"""
@@ -831,7 +831,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 		# Otherwise, unset it...
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
         			self.cursor.execute("""UPDATE mailman_mysql 
 					SET user_options = user_options & ~%s
 					WHERE listname = '%s' AND address = '%s'"""
@@ -852,7 +852,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self.__assertIsMember(member)
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
         		self.cursor.execute("""UPDATE mailman_mysql SET name='%s'
 				WHERE address = '%s' AND listname = '%s'"""
 			%( MySQLdb.escape_string(realname),
@@ -874,7 +874,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         memberkey = member.lower()
         self._prodServerConnection
 	try:
-		if self.getTableType is 'flat':
+		if self.getTableType() is 'flat':
         		self.cursor.execute("""UPDATE mailman_mysql SET topics_userinterest='%s'
 				WHERE listname='%s' AND address = '%s'"""
 			%( topics,
@@ -901,7 +901,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         else:
         	self._prodServerConnection
 		try:
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
       				self.cursor.execute("""UPDATE mailman_mysql 
 				SET delivery_status='%s',
 				delivery_status_timestamp=NOW()
@@ -928,7 +928,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         if info is None:
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
             			self.cursor.execute("""UPDATE mailman_mysql SET 
 				bi_cookie = NULL,
 				bi_score = 0,
@@ -953,7 +953,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 			syslog("error", "MySQL update warning setting Bounce info for member '%s'" % (member) )
 		try:
         		self._prodServerConnection
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
             			self.cursor.execute("""UPDATE mailman_mysql 
 				SET delivery_status = '%s'
 				WHERE listname = '%s' AND address = '%s'"""
@@ -977,7 +977,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 			lnsql = time.strftime("%Y-%m-%d", lnsql)
 			datesql = (info.date[0],info.date[1],info.date[2],0,0,0,0,0,0)
 			datesql = time.strftime("%Y-%m-%d",datesql)
-			if self.getTableType is 'flat':
+			if self.getTableType() is 'flat':
             			self.cursor.execute("""UPDATE mailman_mysql SET 
 				bi_cookie = '%s',
 				bi_score = %s,
