@@ -91,7 +91,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self._prodServerConnection
 	if self.getTableType() is 'flat':
 		self.cursor.execute ("""CREATE TABLE IF NOT EXISTS mailman_mysql (
-  listname varchar(255) NOT NULL,
+  listname varchar(100) NOT NULL,
   address varchar(255) NOT NULL,
   hide enum('Y','N') NOT NULL default 'N',
   nomail enum('Y','N') NOT NULL default 'N',
