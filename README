@@ -1,0 +1,128 @@
+
+Dear mailman-developers,
+
+
+here are a few patches and contributions for our dear Mailman, that I made in order to have it "scale" a bit more. I had hit the usability limit (on my server) of the Web UI, on a list with a bit more than 100 000 subscribers. (Its config.pck file had grown to 25Mb, and simply to load the list costs about 30 seconds.)
+
+
+Summary
+-------
+
+* a comprehensive rewrite of MysqlMemberAdaptor.py
+* a revision of the /admin/members/ page
+* a migration utility
+* a trick to easily test on your production server w/o too many risks
+
+
+MysqlMemberAdaptor.py
+---------------------
+
+My first step was to try switching to MySQL for backend. I started with Kev Green's MysqlMemberAdaptor.py (that has been discussed recently on this list).
+
+I had decided, for some reason, to use its 'flat' mode of operation, but realised, first, that it was not working on my site, and then that this code could not be maintained as it was, and had to be 'reunited'. (I also wanted the 'flat' table to be called something else than `mailman_mysql`, which I can't type fast enough :-)
+
+Anyway, it has now shrunk a lot in size, as many functions have been simplified. And it has grown a little set of features:
+
+* in mm_cfg.py you can now optionally set:
+    # in 'flat' mode, the name of the table
+    MYSQL_MEMBER_TABLE_NAME = 'mailman'
+    # auto-creating the table becomes an option
+    MYSQL_MEMBER_CREATE_TABLE = True
+    # the 'verbose' option now logs all mysql queries to logs/mysql.log
+    MYSQL_MEMBER_DB_VERBOSE = True
+
+* two new methods have been introduced, in order to get around bottlenecks
+  in speed in the admin/members/ page
+
+    def getMembersMatching(self, regexp):
+        """Get all the members who match regexp"""
+    def getMembersCount(self, reason):
+        """Get the count of all members (reason=Y for digest, N for regular)"""
+
+getMembersMatching(regexp) is for the "search" feature on the members page. Instead of reading into memory the full list of subscribers, then applying the regexp to each one of them, we ask MySQL to carry out the search for us, and process the small set of results.
+
+I tried to test every method with several combinations of accents and weird chars (like '%') in the names and email addresses, and it seems fine for iso-8859-1, but will certainly fail (or rather, give weird results) for other charsets. There's room for improvement here.
+
+I *think* that the file is almost ready for being a generic DBAPIMemberAdaptor, but I can't prove it as I have absolutely no knowledge of SQLite or postgres. But there is nothing specific to MySQL in it, except for the quotes escaping function. This could be an important new feature.
+
+
+
+Mailman/Cgi/admin.py
+--------------------
+
+This file had already become **really slow** with OldStyleMemberships, for several reasons; switching to MySQLMemberAdaptor made things even worse: most methods were called once per member, which in the (older) MysqlMemberAdaptor translated into hundreds of thousands of queries on the DB. I rewrote the parts that were slow, especially the "buckets" thing. The result is visually a bit different (more condensed), but retains about the same functionality. The speed is dramatically better, the time to render the members page for my big list going down from... 4 minutes (!) to 30 seconds (in OldStyle...), and to 12 seconds with my version of MysqlMemberAdaptor.
+
+While I was at it, I also removed the unusable/unused buttons and menus in this members page: no more language menu when there's only one language to choose, and no more digest/plain button when the list is not digestable.
+
+
+bin/migrate_to_mysql
+--------------------
+
+This new CLI utility copies all the members of a mailing list to a new MemberAdaptor. It is written in a purely generic manner: it opens two instances of the list, one with each MemberAdaptor, and reads all data from the "source" memberadaptor, writing it back with the "dest" memberadaptor.
+
+Its name does not reflect its genericity, because you have to edit it if you want to change the source and dest MemberAdaptors, e.g. to go back to OldStyleMemberships. This could be improved.
+
+Also, this utility does not remove the members from the older memberadaptor; to do so you have to carefully check that you have set the list to the older adapator, then use
+	bin/remove_members --all -n -N listname
+(In my example, after using migrate..., the config.pck file is left untouched and still weighs 25Mb; after using remove_members it's back to a few kb)
+
+
+
+Small patches
+-------------
+
+In Mailman/MemberAdaptor.py I have added the wo new methods
+@@ -63,6 +63,14 @@ class MemberAdaptor:
++    def getMembersMatching(self, regexp):
++        """Get all the members who match regexp"""
++        raise NotImplementedError
++    
++    def getMembersCount(self, reason):
++        """Get the count of all members (reason=Y for digest, N for regular)"""
++        raise NotImplementedError
+
+I'm not sure if this is the way to go -- i.e. admin.py can do without those
+methods being implemented, so it's more a design decision to be made by Barry
+and al.
+
+
+For some reason, I was biten by a weird bug that could only be solved by adding
+in Mailman/MailList.py the following line:
+@@ -385,6 +385,7 @@ class MailList(HTMLFormatter, Deliverer,
++        self.nonmember_rejection_notice = ''
+this might be due to the fact that I'm based on 2.1.6b and not the final
+version, or that I made an error during my hacking nights :) Anyway it might be worth a check.
+
+
+
+A trick
+-------
+
+The best (and only?) way to test this on a production server is to use the extend.py mechanism. In your test list directory (~mailman/lists/test/), just drop this file named extend.py:
+
+"""
+# import the MySQL stuff
+from Mailman.MysqlMemberships import MysqlMemberships
+
+# override the default for this list
+def extend(mlist):
+    mlist._memberadaptor = MysqlMemberships(mlist)
+"""
+
+It's also immensely useful if you want to switch back and forth, for instance to use the migrate_to_mysql script, check the results, then go back to oldstyle to remove the oldstyle subscriptions.
+
+
+
+Finally
+-------
+
+I'd love to see this integrated in Mailman's standard distribution. I think Barry or Tokio must check all the changes, and discuss which ones might not be acceptable, and resolve copyright issues. I don't know why Kev Green's patch was left as is on SourceForge for a long while, as it's a common requirement to have a MySQL backend for Mailman. I hope this work will contribute to this issue. 
+
+There was also a discussion lately on the list, about Kev's MysqlMemberAdaptor and bounces handling. The issues that were raised might continue (or not) to apply to my version of this Adaptor, and might call for a few more changes. Please read it, try it, and tell me.
+
+As everyone knows the SF site is not really easy to use for contributors as well as for readers; so I'm temporarily uploading the files on my SVN server; if someone wants to join and contribute I'll be happy to open write access.
+
+Everything is at:
+    svn co svn://trac.rezo.net/rezo/Mailman/
+and the web interface:
+    http://trac.rezo.net/trac/rezo/browser/Mailman/
