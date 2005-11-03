@@ -28,6 +28,7 @@ import urllib
 import signal
 from types import *
 from string import lowercase, digits
+from urllib import urlencode
 
 from email.Utils import unquote, parseaddr, formataddr
 
@@ -47,7 +48,6 @@ _ = i18n._
 i18n.set_language(mm_cfg.DEFAULT_SERVER_LANGUAGE)
 
 NL = '\n'
-OPTCOLUMNS = 11
 
 try:
     True, False
@@ -863,106 +863,139 @@ def membership_options(mlist, subcat, cgidata, doc, form):
     # If there are more members than allowed by chunksize, then we split the
     # membership up alphabetically.  Otherwise just display them all.
     chunksz = mlist.admin_member_chunksize
-    # The email addresses had /better/ be ASCII, but might be encoded in the
-    # database as Unicodes.
-    all = [_m.encode() for _m in mlist.getMembers()]
-    all.sort(lambda x, y: cmp(x.lower(), y.lower()))
+
     # See if the query has a regular expression
     regexp = cgidata.getvalue('findmember', '').strip()
-    if regexp:
+    # if not, list all members
+    if not len(regexp):
+        all = mlist.getMembers()
+        allcnt = len(all)
+    else:
+        # try the getMembersMatching() method
         try:
-            cre = re.compile(regexp, re.IGNORECASE)
-        except re.error:
-            doc.addError(_('Bad regular expression: ') + regexp)
-        else:
-            # BAW: There's got to be a more efficient way of doing this!
-            names = [mlist.getMemberName(s) or '' for s in all]
-            all = [a for n, a in zip(names, all)
-                   if cre.search(n) or cre.search(a)]
-    chunkindex = None
-    bucket = None
-    actionurl = None
+            all = mlist.getMembersMatching(regexp)
+            allcnt = mlist.getMembersCount()
+        # or resort to the old method
+        except NotImplementedError,e:
+            try:
+                cre = re.compile(regexp, re.IGNORECASE)
+            except re.error:
+                doc.addError(_('Bad regular expression: ') + regexp)
+            else:
+                all = mlist.getMembers()
+                allcnt = len(all)
+                names = [mlist.getMemberName(s) or '' for s in all]
+                all = [a for n, a in zip(names, all)
+                       if cre.search(n) or cre.search(a)]
+
+    # The email addresses had /better/ be ASCII, but might be encoded in the
+    # database as Unicodes.
+    all = [_m.encode() for _m in all]
+    all.sort(lambda x, y: cmp(x.lower(), y.lower()))
+
+    # who's on the digest?
+    digest_members = mlist.getDigestMemberKeys()
+
+    # which options can we display?
+    options = [_('unsub'), _('member address<br>member name'),
+               _('mod'), _('hide'), _('nomail<br>[reason]'), _('ack'),
+               _('not metoo'), _('nodupes')]
+
+    # Do we want to display "digest"?
+    if mlist.digestable or len(digest_members):
+        options.append(_('digest'))
+        options.append(_('plain'))
+
+    # Do we want to display the language menu?
+    langs = mlist.GetAvailableLanguages()
+    if len(langs) > 1:
+        langdescs = [_(Utils.GetLanguageDescr(lang)) for lang in langs]
+        options.append(_('language'))
+    else:
+        langs = None
+
+    OPTCOLUMNS = len(options)
+
+    starters = []
+
+    # List all members that we want to display
+    # maybe everyone if they are not too many
     if len(all) < chunksz:
         members = all
     else:
-        # Split them up alphabetically, and then split the alphabetical
-        # listing by chunks
-        buckets = {}
-        for addr in all:
-            members = buckets.setdefault(addr[0].lower(), [])
-            members.append(addr)
-        # Now figure out which bucket we want
-        bucket = None
-        qs = {}
-        # POST methods, even if their actions have a query string, don't get
-        # put into FieldStorage's keys :-(
+        # Retrieve the start address
+        # BAW: POST methods, even if their actions have a query string, don't
+        # get put into FieldStorage's keys :-(
+        start = ''
         qsenviron = os.environ.get('QUERY_STRING')
         if qsenviron:
             qs = cgi.parse_qs(qsenviron)
-            bucket = qs.get('letter', 'a')[0].lower()
-            if bucket not in digits + lowercase:
-                bucket = None
-        if not bucket or not buckets.has_key(bucket):
-            keys = buckets.keys()
-            keys.sort()
-            bucket = keys[0]
-        members = buckets[bucket]
-        action = adminurl + '/members?letter=%s' % bucket
-        if len(members) <= chunksz:
-            form.set_action(action)
-        else:
-            i, r = divmod(len(members), chunksz)
-            numchunks = i + (not not r * 1)
-            # Now chunk them up
-            chunkindex = 0
-            if qs.has_key('chunk'):
-                try:
-                    chunkindex = int(qs['chunk'][0])
-                except ValueError:
-                    chunkindex = 0
-                if chunkindex < 0 or chunkindex > numchunks:
-                    chunkindex = 0
-            members = members[chunkindex*chunksz:(chunkindex+1)*chunksz]
-            # And set the action URL
-            form.set_action(action + '&chunk=%s' % chunkindex)
-    # So now members holds all the addresses we're going to display
-    allcnt = len(all)
-    if bucket:
-        membercnt = len(members)
-        usertable.AddRow([Center(Italic(_(
-            '%(allcnt)s members total, %(membercnt)s shown')))])
+            if qs.has_key('start'):
+                start = qs.get('start')[0].lower()
+
+        # Show start links for every address that is either starting a bucket
+        # or, inside the current bucket, starting a chunk
+        num = 0
+        numtaken = 0
+        members = []
+        bucket = ''
+        try:
+            currentbucket = start[0].upper()
+        except:
+            currentbucket = ''
+
+        for addr in all:
+            # If the address changes of bucket, or is in the same bucket
+            # as the start parameter, and a multiple of chunksize addresses
+            # write a link to it
+            reason = ''
+            if addr[0].upper() != bucket:
+                bucket = addr[0].upper()
+                reason = '<b>' + bucket + '</b>'
+                num = 0
+            elif num % chunksz == 0 and bucket == currentbucket:
+                reason = '<small>' + str(num/chunksz) + '</small>'
+            if reason:
+                if start == addr:
+                    link = reason
+                else:
+                    url = adminurl + '/members?' + urlencode({'start':addr})
+                    if len(regexp):
+                        url = url + '&amp;' + urlencode({'findmember':regexp})                            
+                    link = Link(url, reason).Format()
+                starters.append(link)
+            num += 1
+
+            # If the address is after the START value, take it for display
+            # but don't take more than the max chunksize
+            if addr.lower() >= start and numtaken < chunksz:
+                numtaken += 1
+                members.append(addr)
+
+
+    # Add the start links
+    joiner = '&nbsp;' + '\n'
+    membercnt = len(all)
+    if membercnt == allcnt:
+        message = _('%(allcnt)s members total')
     else:
-        usertable.AddRow([Center(Italic(_('%(allcnt)s members total')))])
+        message = _('%(allcnt)s members total, %(membercnt)s shown')
+    usertable.AddRow([Center(
+      joiner.join(starters) + 
+      '<div style="float:right"><i>' + message + '</i></div>'
+    )])
     usertable.AddCellInfo(usertable.GetCurrentRowIndex(),
                           usertable.GetCurrentCellIndex(),
                           colspan=OPTCOLUMNS,
                           bgcolor=mm_cfg.WEB_ADMINITEM_COLOR)
-    # Add the alphabetical links
-    if bucket:
-        cells = []
-        for letter in digits + lowercase:
-            if not buckets.get(letter):
-                continue
-            url = adminurl + '/members?letter=%s' % letter
-            if letter == bucket:
-                show = Bold('[%s]' % letter.upper()).Format()
-            else:
-                show = letter.upper()
-            cells.append(Link(url, show).Format())
-        joiner = '&nbsp;'*2 + '\n'
-        usertable.AddRow([Center(joiner.join(cells))])
+
+    # So now members holds all the addresses we're going to display
+    usertable.AddRow('')
     usertable.AddCellInfo(usertable.GetCurrentRowIndex(),
                           usertable.GetCurrentCellIndex(),
                           colspan=OPTCOLUMNS,
                           bgcolor=mm_cfg.WEB_ADMINITEM_COLOR)
-    usertable.AddRow([Center(h) for h in (_('unsub'),
-                                          _('member address<br>member name'),
-                                          _('mod'), _('hide'),
-                                          _('nomail<br>[reason]'),
-                                          _('ack'), _('not metoo'),
-                                          _('nodupes'),
-                                          _('digest'), _('plain'),
-                                          _('language'))])
+    usertable.AddRow([Center(h) for h in options])
     rowindex = usertable.GetCurrentRowIndex()
     for i in range(OPTCOLUMNS):
         usertable.AddCellInfo(rowindex, i, bgcolor=mm_cfg.WEB_ADMINITEM_COLOR)
@@ -1021,27 +1054,29 @@ def membership_options(mlist, subcat, cgidata, doc, form):
         # This code is less efficient than the original which did a has_key on
         # the underlying dictionary attribute.  This version is slower and
         # less memory efficient.  It points to a new MemberAdaptor interface
-        # method.
-        if addr in mlist.getRegularMemberKeys():
-            cells.append(Center(CheckBox(addr + '_digest', 'off', 0).Format()))
-        else:
-            cells.append(Center(CheckBox(addr + '_digest', 'on', 1).Format()))
-        if mlist.getMemberOption(addr, mm_cfg.OPTINFO['plain']):
-            value = 'on'
-            checked = 1
-        else:
-            value = 'off'
-            checked = 0
-        cells.append(Center(CheckBox('%s_plain' % addr, value, checked)))
+        # method. (Modified by Fil to "cache" the result - useful for
+        # MySQLMemberAdaptor)
+        if mlist.digestable or len(digest_members):
+            if addr in digest_members:
+                cells.append(Center(CheckBox(addr + '_digest', 'on', 1).Format()))
+            else:
+                cells.append(Center(CheckBox(addr + '_digest', 'off', 0).Format()))
+            if mlist.getMemberOption(addr, mm_cfg.OPTINFO['plain']):
+                value = 'on'
+                checked = 1
+            else:
+                value = 'off'
+                checked = 0
+            cells.append(Center(CheckBox('%s_plain' % addr, value, checked)))
+
         # User's preferred language
         langpref = mlist.getMemberLanguage(addr)
-        langs = mlist.GetAvailableLanguages()
-        langdescs = [_(Utils.GetLanguageDescr(lang)) for lang in langs]
-        try:
-            selected = langs.index(langpref)
-        except ValueError:
-            selected = 0
-        cells.append(Center(SelectOptions(addr + '_language', langs,
+        if langs:
+            try:
+                selected = langs.index(langpref)
+            except ValueError:
+                selected = 0
+            cells.append(Center(SelectOptions(addr + '_language', langs,
                                           langdescs, selected)).Format())
         usertable.AddRow(cells)
     # Add the usertable and a legend
@@ -1105,23 +1140,6 @@ def membership_options(mlist, subcat, cgidata, doc, form):
                  _('Click here to include the legend for this table.')))
     container.AddItem(Center(usertable))
 
-    # There may be additional chunks
-    if chunkindex is not None:
-        buttons = []
-        url = adminurl + '/members?%sletter=%s&' % (addlegend, bucket)
-        footer = _('''<p><em>To view more members, click on the appropriate
-        range listed below:</em>''')
-        chunkmembers = buckets[bucket]
-        last = len(chunkmembers)
-        for i in range(numchunks):
-            if i == chunkindex:
-                continue
-            start = chunkmembers[i*chunksz]
-            end = chunkmembers[min((i+1)*chunksz, last)-1]
-            link = Link(url + 'chunk=%d' % i, _('from %(start)s to %(end)s'))
-            buttons.append(link)
-        buttons = UnorderedList(*buttons)
-        container.AddItem(footer + buttons.Format() + '<p>')
     return container
 
 

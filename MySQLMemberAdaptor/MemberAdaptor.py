@@ -63,6 +63,14 @@ class MemberAdaptor:
         """Get the LCE for all the members of the mailing list."""
         raise NotImplementedError
 
+    def getMembersMatching(self, regexp):
+        """Get all the members who match regexp"""
+        raise NotImplementedError
+    
+    def getMembersCount(self, reason):
+        """Get the count of all members (reason=Y for digest, N for regular)"""
+        raise NotImplementedError
+
     def getRegularMemberKeys(self):
         """Get the LCE for all regular delivery members (i.e. non-digest)."""
         raise NotImplementedError
