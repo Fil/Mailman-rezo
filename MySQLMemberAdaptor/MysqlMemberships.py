@@ -29,7 +29,7 @@ Kev Green, oRe Net (http://www.orenet.co.uk/), 2003/11/04
 
 Extensively modified by Fil <fil@rezo.net>, 2005/11/01
 
-$Revision: ?????? $
+based on Kev's $Revision: 1.69 $
 
 """
 
@@ -102,7 +102,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
                 # Message to indicate successful init.
                 message = "MysqlMemberships " \
-                    + "$Revision: 1.61 $ initialized with host: %s (%s)" % (
+                    + "$Revision: 1.69 $ initialized with host: %s (%s)" % (
                     connection.get_host_info(), connection.get_server_info() )
                 syslog('error', message)
                 syslog('mysql', message)
@@ -121,8 +121,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         self.conn.close()
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             # Message to indicate successful close.
-            syslog("error", "MysqlMemberships $Revision: 1.61 $ unloaded" )
-            syslog("mysql", "MysqlMemberships $Revision: 1.61 $ unloaded" )
+            syslog("error", "MysqlMemberships $Revision: 1.69 $ unloaded" )
+            syslog("mysql", "MysqlMemberships $Revision: 1.69 $ unloaded" )
 
     # Find out whether we should be using 'flat' or 'wide' table type.
     # for backwards compatibility, the default is 'wide'
@@ -457,7 +457,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         return [member.lower() for member in bounce_info_list]
 
     def getBounceInfo(self, member):
-        self.query("""SELECT bi_cookie,
+        self.query("""SELECT
             bi_score,
             bi_noticesleft,
             YEAR(bi_lastnotice),
@@ -465,7 +465,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             DAYOFMONTH(bi_lastnotice),
             YEAR(bi_date),
             MONTH(bi_date),
-            DAYOFMONTH(bi_date)
+            DAYOFMONTH(bi_date),
+            bi_cookie
             FROM %s WHERE %s AND """ %(self._table, self._where)
             + ("address = '%s'" %( self.escape(member) ) ))
         numrows = int(self.cursor.rowcount)
@@ -474,12 +475,13 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         row = self.cursor.fetchone()
         # We must not return a _BounceInfo instance if there is no bounce info
         # to start with.
-        if row[4] <= 0:
+        if row[3] <= 0:
             return None;
         # Otherwise, populate a bounce_info structure.
-        bounce_info = _BounceInfo(
-            member, row[1], (row[6],row[7],row[8]), row[2], row[0])
-        bounce_info.lastnotice = (row[3],row[4],row[5])
+        bounce_info = _BounceInfo(member, row[0],
+            (row[5],row[6],row[7]), row[1])
+        bounce_info.lastnotice = (row[2],row[3],row[4])
+        bounce_info.cookie = row[8]
         return bounce_info
 
 
