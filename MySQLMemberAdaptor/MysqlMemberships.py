@@ -555,6 +555,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 #        assert self.__mlist.Locked()
         self.query("DELETE FROM %s WHERE %s " %(self._table, self._where)
             + ("AND address = '%s'" %( self.escape(member.lower()) ) ))
+        self.uncache()
 
     def changeMemberAddress(self, member, newaddress, nodelete=0):
 #        assert self.__mlist.Locked()
