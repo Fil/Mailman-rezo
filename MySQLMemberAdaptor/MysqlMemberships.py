@@ -533,7 +533,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         else:
             options = 0
         if self.getTableType() is 'flat':
-            query = "INSERT INTO mailman_mysql " \
+            query = "INSERT INTO %s " %(self._table) \
             + "(listname, address, user_options, password, lang, " \
             + "digest, delivery_status) values " \
             + "('%s','%s',%s,'%s','%s','%s','%s')"
