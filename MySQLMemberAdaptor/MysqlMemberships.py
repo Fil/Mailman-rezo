@@ -55,11 +55,11 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         # Check if we can access the database with a ping() call, so we error
         # out sooner rather than later because of it.
         try:
-            connection=MySQLdb.connect(passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
+            self.connection=MySQLdb.connect(passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
                 db=mm_cfg.MYSQL_MEMBER_DB_NAME,
                 user=mm_cfg.MYSQL_MEMBER_DB_USER,
                 host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-            connection.ping()
+            self.connection.ping()
         except MySQLdb.OperationalError, e:
             # Connect failed.
             error = "Fatal error connecting to MySQL database %s (%s): %s" %(
@@ -74,8 +74,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             syslog("error", error)
             print error
             sys.exit(1)
-        self.cursor = connection.cursor()
-        self._prodServerConnection
+        self.cursor = self.connection.cursor()
+        self._prodServerConnection()
 
         # define the table and standard condition reflecting listname
         # (this is for upwards compatibility with the 'wide' mode and
@@ -103,7 +103,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                 # Message to indicate successful init.
                 message = "MysqlMemberships " \
                     + "$Revision: 1.69 $ initialized with host: %s (%s)" % (
-                    connection.get_host_info(), connection.get_server_info() )
+                    self.connection.get_host_info(),
+                    self.connection.get_server_info() )
                 syslog('error', message)
                 syslog('mysql', message)
         except AttributeError:
@@ -136,8 +137,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             return 'wide'
 
     # Check to see if a connection's still alive. If not, reconnect.
-    def _prodServerConnection():
-        if ping(self.connection) == 0:
+    def _prodServerConnection(self):
+        if self.connection.ping() == 0:
             return self.connection
         else:
             # Connection failed, or an error, try a hard dis+reconnect.
@@ -221,7 +222,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def query(self, query):
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             syslog('mysql', query)
-        self._prodServerConnection
+        self._prodServerConnection()
         return self.cursor.execute (query)
 
     # return all members according to a certain condition
