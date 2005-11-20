@@ -149,7 +149,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                     passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
                     db=mm_cfg.MYSQL_MEMBER_DB_NAME,
                     user=mm_cfg.MYSQL_MEMBER_DB_USER,
-                    host=mm_cfg.MYSQL_MEMBER_DB_HOST) 
+                    host=mm_cfg.MYSQL_MEMBER_DB_HOST)
+                self.cursor = self.connection.cursor()
             except MySQLdb.Warning, e:
                 message = "Error reconnecting to MySQL database %s (%s): %s" %(
                         mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
