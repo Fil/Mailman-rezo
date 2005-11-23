@@ -138,26 +138,31 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     # Check to see if a connection's still alive. If not, reconnect.
     def _prodServerConnection(self):
-        if self.connection.ping() == 0:
-            return self.connection
-        else:
-            # Connection failed, or an error, try a hard dis+reconnect.
-            try:
-                self.cursor.close()
-                self.connection.close()
-                self.connection = MySQLdb.connect(
-                    passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
-                    db=mm_cfg.MYSQL_MEMBER_DB_NAME,
-                    user=mm_cfg.MYSQL_MEMBER_DB_USER,
-                    host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-                self.cursor = self.connection.cursor()
-            except MySQLdb.Warning, e:
-                message = "Error reconnecting to MySQL database %s (%s): %s" %(
-                        mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
-                syslog('error', message)
-                if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
-                    syslog('mysql', message)
-                sys.exit(1)
+        try:
+            if self.connection.ping() == 0:
+                return self.connection
+        except:
+            syslog('mysql', 'connection warning')
+            pass
+
+        # Connection failed, or an error, try a hard dis+reconnect.
+        try:
+            self.cursor.close()
+            self.connection.close()
+            self.connection = MySQLdb.connect(
+                passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
+                db=mm_cfg.MYSQL_MEMBER_DB_NAME,
+                user=mm_cfg.MYSQL_MEMBER_DB_USER,
+                host=mm_cfg.MYSQL_MEMBER_DB_HOST)
+            self.cursor = self.connection.cursor()
+        except MySQLdb.Warning, e:
+            message = "Error reconnecting to MySQL database %s (%s): %s" %(
+                    mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
+            syslog('error', message)
+            if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
+                syslog('mysql', message)
+            sys.exit(1)
+
         return self.connection
 
     # create tables (if the option is set in mm_cfg)
@@ -673,6 +678,6 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                         info.cookie, info.score,
                         info.noticesleft, lnsql, datesql
                     ))
-                + "WHERE %s " %(self._where)
+                + ("WHERE %s " %(self._where))
                 + ("AND address = '%s'" %( self.escape(member) )))
 
