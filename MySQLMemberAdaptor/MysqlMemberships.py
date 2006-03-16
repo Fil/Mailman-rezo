@@ -169,7 +169,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def createTable(self):
         if self.getTableType() is 'flat':
             self.query (
-"""CREATE TABLE IF NOT EXISTS %s (
+"""CREATE TABLE IF NOT EXISTS `%s` (
   listname varchar(100) NOT NULL,
   address varchar(255) NOT NULL,
   hide enum('Y','N') NOT NULL default 'N',
@@ -195,7 +195,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 ) TYPE=MyISAM""" %(self._table))
         else:
             self.query (
-"""CREATE TABLE IF NOT EXISTS %s (
+"""CREATE TABLE IF NOT EXISTS `%s` (
   address varchar(255) NOT NULL,
   hide enum('Y','N') NOT NULL default 'N',
   nomail enum('Y','N') NOT NULL default 'N',
@@ -250,7 +250,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def select(self, what, where=''):
         query = "SELECT " + what \
             + ",address,name,user_options,delivery_status,lang,digest " \
-            + "FROM %s WHERE %s" %(self._table, self._where)
+            + "FROM `%s` WHERE %s" %(self._table, self._where)
         if where:
             query += " AND %s" %(where)
         return self.queryall(query + ' ORDER BY address', True)
@@ -275,7 +275,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         return a
 
     def update_on(self, what, value, address):
-        self.query("UPDATE %s " %(self._table)
+        self.query("UPDATE `%s` " %(self._table)
                 + ("SET %s = '%s', " %(what, self.escape(value))
                 + "delivery_status_timestamp=NOW() WHERE %s " %(self._where)
                 + ("AND address = '%s'" %(self.escape(address)))))
@@ -393,7 +393,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             where = " AND digest='%s'" %reason
         else:
             where = ""
-        self.query("SELECT COUNT(*) FROM %s WHERE %s%s" %(
+        self.query("SELECT COUNT(*) FROM `%s` WHERE %s%s" %(
           self._table, self._where, where))
         count = self.cursor.fetchone()
         return int(count[0])
@@ -449,7 +449,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def getBouncingMembers(self):
         self.query("""SELECT bi_cookie,bi_score,bi_noticesleft,
             UNIX_TIMESTAMP(bi_lastnotice),UNIX_TIMESTAMP(bi_date),address
-            FROM %s WHERE %s""" %(self._table, self._where))
+            FROM `%s` WHERE %s""" %(self._table, self._where))
         # get the number of rows in the resultset
         numrows = int(self.cursor.rowcount)
         # save one address at a time
@@ -474,7 +474,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             MONTH(bi_date),
             DAYOFMONTH(bi_date),
             bi_cookie
-            FROM %s WHERE %s AND """ %(self._table, self._where)
+            FROM `%s` WHERE %s AND """ %(self._table, self._where)
             + ("address = '%s'" %( self.escape(member) ) ))
         numrows = int(self.cursor.rowcount)
         if numrows is 0:
@@ -540,12 +540,12 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         else:
             options = 0
         if self.getTableType() is 'flat':
-            query = "INSERT INTO %s " %(self._table) \
+            query = "INSERT INTO `%s` " %(self._table) \
             + "(listname, address, user_options, password, lang, " \
             + "digest, delivery_status) values " \
             + "('%s','%s',%s,'%s','%s','%s','%s')"
         else:
-            query = "INSERT INTO %s " \
+            query = "INSERT INTO `%s` " \
             + "(address, user_options, password, lang, " \
             + "digest, delivery_status) values " \
             + "('%s',%s,'%s','%s','%s','%s')"
@@ -560,7 +560,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def removeMember(self, member):
 #        assert self.__mlist.Locked()
-        self.query("DELETE FROM %s WHERE %s " %(self._table, self._where)
+        self.query("DELETE FROM `%s` WHERE %s " %(self._table, self._where)
             + ("AND address = '%s'" %( self.escape(member.lower()) ) ))
         self.uncache()
 
@@ -608,12 +608,12 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         # work, maybe. Will have to suck it and see for the moment.
         # If the value is non-zero, set the bitfield indicated by 'flag'.
         if value:
-            self.query("UPDATE %s " %(self._table)
+            self.query("UPDATE `%s` " %(self._table)
                 + ("SET user_options = user_options | %s " %(flag))
                 + "WHERE %s " %(self._where)
                 + ("AND address = '%s'" %( self.escape(member) ) ))
         else:
-            self.query("UPDATE %s " %(self._table)
+            self.query("UPDATE `%s` " %(self._table)
                 + ("SET user_options = user_options & ~%s " %(flag))
                 + "WHERE %s " %(self._where)
                 + ("AND address = '%s'" %( self.escape(member) ) ))
@@ -626,7 +626,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def setMemberTopics(self, member, topics):
 #        assert self.__mlist.Locked()
-        self.query("UPDATE %s " %(self._table)
+        self.query("UPDATE `%s` " %(self._table)
             + ("SET topics_userinterest = '%s' " %(
               self.escape(topics) ))
             + "WHERE %s " %(self._where)
@@ -642,7 +642,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             # Enable by resetting their bounce info.
             self.setBounceInfo(member, None)
         else:
-            self.query("UPDATE %s " %(self._table)
+            self.query("UPDATE `%s` " %(self._table)
                 + ("SET delivery_status = '%s', " %(status))
                 + "delivery_status_timestamp=NOW() WHERE %s " %(self._where)
                 + ("AND address = '%s'" %( self.escape(member) )))
@@ -653,7 +653,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 #        assert self.__mlist.Locked()
         member = member.lower()
         if info is None:
-            self.query("UPDATE %s " %(self._table)
+            self.query("UPDATE `%s` " %(self._table)
                 + ("SET delivery_status = '%s', " %(MemberAdaptor.ENABLED))
                 + "bi_cookie = NULL, "
                 + "bi_score = 0, "
@@ -669,7 +669,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             lnsql = time.strftime("%Y-%m-%d", lnsql)
             datesql = (info.date[0],info.date[1],info.date[2],0,0,0,0,0,0)
             datesql = time.strftime("%Y-%m-%d",datesql)
-            self.query("UPDATE %s " %(self._table)
+            self.query("UPDATE `%s` " %(self._table)
                 + ("SET bi_cookie = '%s', "
                     + "bi_score = %s, "
                     + "bi_noticesleft = %s, "
