@@ -161,6 +161,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             syslog('error', message)
             if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
                 syslog('mysql', message)
+            # exit? why not sleep(30) and retry?
             sys.exit(1)
 
         return self.connection
@@ -670,11 +671,11 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             datesql = (info.date[0],info.date[1],info.date[2],0,0,0,0,0,0)
             datesql = time.strftime("%Y-%m-%d",datesql)
             self.query("UPDATE `%s` " %(self._table)
-                + ("SET bi_cookie = '%s', "
+                + (("SET bi_cookie = '%s', "
                     + "bi_score = %s, "
                     + "bi_noticesleft = %s, "
                     + "bi_lastnotice = '%s', "
-                    + "bi_date = '%s' " %(
+                    + "bi_date = '%s' ") %(
                         info.cookie, info.score,
                         info.noticesleft, lnsql, datesql
                     ))
