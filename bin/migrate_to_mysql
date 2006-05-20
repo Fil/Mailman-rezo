@@ -180,8 +180,10 @@ def main():
     dest.Save()
     dest.Unlock()
 
-    # you can delete them from the older MemberAdaptor
-    # using bin/remove_members --all listname
+    print "you can delete them from the older MemberAdaptor"
+    print "using: bin/remove_members --all -n -N %s" % (listname)
+    print "beware of the memberadaptor that is selected"
+    print "when you use remove_members!"
 
 if __name__ == '__main__':
     main()
