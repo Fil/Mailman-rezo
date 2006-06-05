@@ -568,8 +568,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def changeMemberAddress(self, member, newaddress, nodelete=0):
 #        assert self.__mlist.Locked()
         # Make sure this address isn't already a member
-        if self.isMember(newAddress):
-            raise Errors.MMAlreadyAMember, newAddress
+        if self.isMember(newaddress):
+            raise Errors.MMAlreadyAMember, newaddress
         self.update_on('address', newaddress, member)
 
     def setMemberPassword(self, member, password):
