@@ -48,34 +48,15 @@ import MySQLdb
 ISREGULAR = 1
 ISDIGEST = 2
 
+mm_cfg.connexion = 0
+
+
 
 class MysqlMemberships(MemberAdaptor.MemberAdaptor):
+
     def __init__(self, mlist):
         self.__mlist = mlist
-        # Check if we can access the database with a ping() call, so we error
-        # out sooner rather than later because of it.
-        try:
-            self.connection=MySQLdb.connect(passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
-                db=mm_cfg.MYSQL_MEMBER_DB_NAME,
-                user=mm_cfg.MYSQL_MEMBER_DB_USER,
-                host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-            self.connection.ping()
-        except MySQLdb.OperationalError, e:
-            # Connect failed.
-            error = "Fatal error connecting to MySQL database %s (%s): %s" %(
-                mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
-            syslog("error", error)
-            print error
-            sys.exit(1)
-        except MySQLdb.Warning, e:
-            # Ping failed.
-            error = "Fatal error PINGing MySQL database %s (%s): %s" %(
-                mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
-            syslog("error", error)
-            print error
-            sys.exit(1)
-        self.cursor = self.connection.cursor()
-        self._prodServerConnection()
+        self._dbconnect()
 
         # define the table and standard condition reflecting listname
         # (this is for upwards compatibility with the 'wide' mode and
@@ -103,8 +84,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                 # Message to indicate successful init.
                 message = "MysqlMemberships " \
                     + "$Revision: 1.69 $ initialized with host: %s (%s)" % (
-                    self.connection.get_host_info(),
-                    self.connection.get_server_info() )
+                    mm_cfg.connexion.get_host_info(),
+                    mm_cfg.connexion.get_server_info() )
                 syslog('error', message)
                 syslog('mysql', message)
         except AttributeError:
@@ -118,8 +99,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def __del__(self):
         # Cleaning up
-        self.cursor.close()
-        self.conn.close()
+        mm_cfg.cursor.close()
+        mm_cfg.connexion.close()
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             # Message to indicate successful close.
             syslog("error", "MysqlMemberships $Revision: 1.69 $ unloaded" )
@@ -139,22 +120,22 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # Check to see if a connection's still alive. If not, reconnect.
     def _prodServerConnection(self):
         try:
-            if self.connection.ping() == 0:
-                return self.connection
+            if mm_cfg.connexion.ping() == 0:
+                return mm_cfg.connexion
         except:
             syslog('mysql', 'connection warning')
             pass
 
         # Connection failed, or an error, try a hard dis+reconnect.
         try:
-            self.cursor.close()
-            self.connection.close()
-            self.connection = MySQLdb.connect(
+            mm_cfg.cursor.close()
+            mm_cfg.connexion.close()
+            mm_cfg.connexion = MySQLdb.connect(
                 passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
                 db=mm_cfg.MYSQL_MEMBER_DB_NAME,
                 user=mm_cfg.MYSQL_MEMBER_DB_USER,
                 host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-            self.cursor = self.connection.cursor()
+            mm_cfg.cursor = mm_cfg.connexion.cursor()
         except MySQLdb.Warning, e:
             message = "Error reconnecting to MySQL database %s (%s): %s" %(
                     mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
@@ -164,7 +145,38 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             # exit? why not sleep(30) and retry?
             sys.exit(1)
 
-        return self.connection
+        return mm_cfg.connexion
+
+    def _dbconnect(self):
+        if mm_cfg.connexion == 0:
+            try:
+                mm_cfg.connexion=MySQLdb.connect(passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
+                    db=mm_cfg.MYSQL_MEMBER_DB_NAME,
+                    user=mm_cfg.MYSQL_MEMBER_DB_USER,
+                    host=mm_cfg.MYSQL_MEMBER_DB_HOST)
+            except MySQLdb.OperationalError, e:
+                # Connect failed.
+                error = "Fatal error connecting to MySQL database %s (%s): %s" %(
+                    mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
+                syslog("error", error)
+                print error
+                sys.exit(1)
+
+        # Check if we can access the database with a ping() call, so we error
+        # out sooner rather than later because of it.
+        try:
+            mm_cfg.connexion.ping()
+        except MySQLdb.Warning, e:
+            # Ping failed.
+            error = "Fatal error PINGing MySQL database %s (%s): %s" %(
+                mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
+            syslog("error", error)
+            print error
+            sys.exit(1)
+        mm_cfg.cursor = mm_cfg.connexion.cursor()
+        self._prodServerConnection()
+        return mm_cfg.connexion
+
 
     # create tables (if the option is set in mm_cfg)
     def createTable(self):
@@ -230,17 +242,17 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             syslog('mysql', query)
         self._prodServerConnection()
-        return self.cursor.execute (query)
+        return mm_cfg.cursor.execute (query)
 
     # return all members according to a certain condition
     def queryall(self, query, cache=False):
         self.query(query)
         # get the number of rows in the resultset
-        numrows = int(self.cursor.rowcount)
+        numrows = int(mm_cfg.cursor.rowcount)
         # save one at a time
         results = []
         for x in range(0,numrows):
-            row = self.cursor.fetchone()
+            row = mm_cfg.cursor.fetchone()
             results.append(row[0])
             # we don't want to cache the whole list for global requests
             if cache and numrows < 1000:
@@ -396,7 +408,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             where = ""
         self.query("SELECT COUNT(*) FROM `%s` WHERE %s%s" %(
           self._table, self._where, where))
-        count = self.cursor.fetchone()
+        count = mm_cfg.cursor.fetchone()
         return int(count[0])
 
     # get member's name (slow method if you need many)
@@ -452,11 +464,11 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             UNIX_TIMESTAMP(bi_lastnotice),UNIX_TIMESTAMP(bi_date),address
             FROM `%s` WHERE %s""" %(self._table, self._where))
         # get the number of rows in the resultset
-        numrows = int(self.cursor.rowcount)
+        numrows = int(mm_cfg.cursor.rowcount)
         # save one address at a time
         bounce_info_list = []
         for x in range(0,numrows):
-            row = self.cursor.fetchone()
+            row = mm_cfg.cursor.fetchone()
             # We must not return anything if there is
             # no bounce info for that member to start with.
             if row[4] > 0:
@@ -477,10 +489,10 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             bi_cookie
             FROM `%s` WHERE %s AND """ %(self._table, self._where)
             + ("address = '%s'" %( self.escape(member) ) ))
-        numrows = int(self.cursor.rowcount)
+        numrows = int(mm_cfg.cursor.rowcount)
         if numrows is 0:
             self.__assertIsMember(member)
-        row = self.cursor.fetchone()
+        row = mm_cfg.cursor.fetchone()
         # We must not return a _BounceInfo instance if there is no bounce info
         # to start with.
         if row[3] <= 0:
@@ -555,7 +567,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             language, digest, MemberAdaptor.ENABLED)
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             syslog('mysql',query)
-        self.cursor.execute(query)
+        mm_cfg.cursor.execute(query)
         if realname:
             self.setMemberName(member, realname)
 
