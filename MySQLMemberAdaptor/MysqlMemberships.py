@@ -48,7 +48,14 @@ import MySQLdb
 ISREGULAR = 1
 ISDIGEST = 2
 
-mm_cfg.connexion = 0
+mm_cfg.connection = 0
+mm_cfg.cursor = 0
+
+try:
+    mm_cfg.MYSQL_MEMBER_DB_VERBOSE
+except AttributeError:
+    mm_cfg.MYSQL_MEMBER_DB_VERBOSE = False  # default value
+    pass
 
 
 
@@ -79,18 +86,14 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         except AttributeError:
             pass
 
-        try:
-            if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
-                # Message to indicate successful init.
-                message = "MysqlMemberships " \
-                    + "$Revision: 1.69 $ initialized with host: %s (%s)" % (
-                    mm_cfg.connexion.get_host_info(),
-                    mm_cfg.connexion.get_server_info() )
-                syslog('error', message)
-                syslog('mysql', message)
-        except AttributeError:
-            mm_cfg.MYSQL_MEMBER_DB_VERBOSE = False  # default value
-            pass
+        if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
+            # Message to indicate successful init.
+            message = "MysqlMemberships " \
+                + "$Revision: 1.69 $ initialized with host: %s (%s)" % (
+                mm_cfg.connection.get_host_info(),
+                mm_cfg.connection.get_server_info() )
+            syslog('error', message)
+            syslog('mysql', message)
 
         # add a cache memory
         self._cache = {}
@@ -99,8 +102,14 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def __del__(self):
         # Cleaning up
-        mm_cfg.cursor.close()
-        mm_cfg.connexion.close()
+        try:
+            mm_cfg.cursor.close()
+        except:
+            pass
+        try:
+            mm_cfg.connection.close()
+        except:
+            pass
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             # Message to indicate successful close.
             syslog("error", "MysqlMemberships $Revision: 1.69 $ unloaded" )
@@ -118,26 +127,37 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             return 'wide'
 
     # Check to see if a connection's still alive. If not, reconnect.
-    def _prodServerConnection(self):
-        try:
-            if mm_cfg.connexion.ping() == 0:
-                return mm_cfg.connexion
-        except:
-            syslog('mysql', 'connection warning')
-            pass
+    def _dbconnect(self):
+        if mm_cfg.connection:
+            try:
+                if mm_cfg.connection.ping() == 0:
+                    return mm_cfg.connection
+            except:
+                syslog('mysql', 'connection warning')
+                pass
 
-        # Connection failed, or an error, try a hard dis+reconnect.
+            # Connection failed, or an error, try a hard dis+reconnect.
+            try:
+                mm_cfg.cursor.close()
+            except:
+                syslog('error', 'error on mm_cfg.cursor.close()')
+                pass
+
+            try:
+                mm_cfg.connection.close()
+            except:
+                syslog('error', 'error on mm_cfg.connection.close()')
+                pass
+
         try:
-            mm_cfg.cursor.close()
-            mm_cfg.connexion.close()
-            mm_cfg.connexion = MySQLdb.connect(
+            mm_cfg.connection = MySQLdb.connect(
                 passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
                 db=mm_cfg.MYSQL_MEMBER_DB_NAME,
                 user=mm_cfg.MYSQL_MEMBER_DB_USER,
                 host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-            mm_cfg.cursor = mm_cfg.connexion.cursor()
-        except MySQLdb.Warning, e:
-            message = "Error reconnecting to MySQL database %s (%s): %s" %(
+            mm_cfg.cursor = mm_cfg.connection.cursor()
+        except MySQLdb.OperationalError, e:
+            message = "Error connecting to MySQL database %s (%s): %s" %(
                     mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
             syslog('error', message)
             if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
@@ -145,37 +165,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             # exit? why not sleep(30) and retry?
             sys.exit(1)
 
-        return mm_cfg.connexion
+        return mm_cfg.connection
 
-    def _dbconnect(self):
-        if mm_cfg.connexion == 0:
-            try:
-                mm_cfg.connexion=MySQLdb.connect(passwd=mm_cfg.MYSQL_MEMBER_DB_PASS,
-                    db=mm_cfg.MYSQL_MEMBER_DB_NAME,
-                    user=mm_cfg.MYSQL_MEMBER_DB_USER,
-                    host=mm_cfg.MYSQL_MEMBER_DB_HOST)
-            except MySQLdb.OperationalError, e:
-                # Connect failed.
-                error = "Fatal error connecting to MySQL database %s (%s): %s" %(
-                    mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
-                syslog("error", error)
-                print error
-                sys.exit(1)
-
-        # Check if we can access the database with a ping() call, so we error
-        # out sooner rather than later because of it.
-        try:
-            mm_cfg.connexion.ping()
-        except MySQLdb.Warning, e:
-            # Ping failed.
-            error = "Fatal error PINGing MySQL database %s (%s): %s" %(
-                mm_cfg.MYSQL_MEMBER_DB_NAME, e.args[0], e.args[1])
-            syslog("error", error)
-            print error
-            sys.exit(1)
-        mm_cfg.cursor = mm_cfg.connexion.cursor()
-        self._prodServerConnection()
-        return mm_cfg.connexion
 
 
     # create tables (if the option is set in mm_cfg)
@@ -241,7 +232,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     def query(self, query):
         if mm_cfg.MYSQL_MEMBER_DB_VERBOSE:
             syslog('mysql', query)
-        self._prodServerConnection()
+        self._dbconnect()
         return mm_cfg.cursor.execute (query)
 
     # return all members according to a certain condition
