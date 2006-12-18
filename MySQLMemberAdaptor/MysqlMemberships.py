@@ -564,6 +564,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def removeMember(self, member):
 #        assert self.__mlist.Locked()
+        self.__assertIsMember(member)
         self.query("DELETE FROM `%s` WHERE %s " %(self._table, self._where)
             + ("AND address = '%s'" %( self.escape(member.lower()) ) ))
         self.uncache()
