@@ -434,11 +434,10 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         time = self.select_on('delivery_status_timestamp',member)
         if len(time):
             time = time[0]
-            # I'm not sure if this is right...
-            if delivery_status_timestamp is '0':
+            if time is '0':
                 return MemberAdaptor.ENABLED
             else:
-                return delivery_status_timestamp
+                return time
         self.__assertIsMember(member)
 
     # Covered by SQL getMembers(), and getDeliveryStatus().
