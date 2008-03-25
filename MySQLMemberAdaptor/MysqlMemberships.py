@@ -668,11 +668,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                 + ("AND address = '%s'" %( self.escape(member) )))
         else:
             # Hack the dates to work with MySQL.
-            lnsql=(info.lastnotice[0], info.lastnotice[1], info.lastnotice[2],
-                0,0,0,0,0,0)
-            lnsql = time.strftime("%Y-%m-%d", lnsql)
-            datesql = (info.date[0],info.date[1],info.date[2],0,0,0,0,0,0)
-            datesql = time.strftime("%Y-%m-%d",datesql)
+            lnsql = time.strftime("%Y-%m-%d", time.strptime('-'.join(map(str,info.lastnotice)),'%Y-%m-%d'))
+            datesql = time.strftime("%Y-%m-%d", time.strptime('-'.join(map(str,info.date)),'%Y-%m-%d'))
             self.query("UPDATE `%s` " %(self._table)
                 + (("SET bi_cookie = '%s', "
                     + "bi_score = %s, "
