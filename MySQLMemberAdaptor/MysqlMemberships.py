@@ -189,14 +189,14 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
   user_options bigint(20) NOT NULL default 0,
   delivery_status INT(10) NOT NULL default 0,
   topics_userinterest varchar(255) default NULL,
-  delivery_status_timestamp datetime default '0',
+  delivery_status_timestamp datetime default '0000-00-00 00:00:00',
   bi_cookie varchar(255) default NULL,
   bi_score double NOT NULL default '0',
   bi_noticesleft double NOT NULL default '0',
   bi_lastnotice date NOT NULL default '0000-00-00',
   bi_date date NOT NULL default '0000-00-00',
   PRIMARY KEY  (listname, address)
-) TYPE=MyISAM""" %(self._table))
+) ENGINE=MyISAM""" %(self._table))
         else:
             self.query (
 """CREATE TABLE IF NOT EXISTS `%s` (
@@ -214,14 +214,14 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
   user_options bigint(20) NOT NULL default 0,
   delivery_status int(10) NOT NULL default 0,
   topics_userinterest varchar(255) default NULL,
-  delivery_status_timestamp datetime DEFAULT '0',
+  delivery_status_timestamp datetime DEFAULT '0000-00-00 00:00:00',
   bi_cookie varchar(255) default NULL,
   bi_score double NOT NULL default '0',
   bi_noticesleft double NOT NULL default '0',
   bi_lastnotice date NOT NULL default '0000-00-00',
   bi_date date NOT NULL default '0000-00-00',
   PRIMARY KEY  (address)
-) TYPE=MyISAM""" %(self._table))
+) ENGINE=MyISAM""" %(self._table))
 
 
     # empty the cache (when we touch a value)
