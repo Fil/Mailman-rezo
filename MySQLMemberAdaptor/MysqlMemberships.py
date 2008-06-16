@@ -47,6 +47,7 @@ import MySQLdb
 
 ISREGULAR = 1
 ISDIGEST = 2
+tm_min = 4
 
 mm_cfg.connection = 0
 mm_cfg.cursor = 0
@@ -97,7 +98,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
         # add a cache memory
         self._cache = {}
-
+        self._cachedate = 0
 
 
     def __del__(self):
@@ -227,6 +228,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # empty the cache (when we touch a value)
     def uncache(self):
         self._cache = {}
+        self._cachedate = time.localtime()[tm_min]
 
     # Apply query on list (manages both 'flat' and 'wide' modes)
     def query(self, query):
@@ -260,6 +262,8 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         return self.queryall(query + ' ORDER BY address', True)
 
     def select_on(self, what, address):
+        if self._cachedate != time.localtime()[tm_min]:
+            self.uncache()
         try:
             a = self._cache[address]
             if what == 'name':
