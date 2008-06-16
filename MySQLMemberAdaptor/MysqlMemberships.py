@@ -279,9 +279,14 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         return a
 
     def update_on(self, what, value, address):
+        if what == 'delivery_status':
+            dst = ", delivery_status_timestamp=NOW() "
+        else:
+            dst = ""
         self.query("UPDATE `%s` " %(self._table)
-                + ("SET %s = '%s', " %(what, self.escape(value))
-                + "delivery_status_timestamp=NOW() WHERE %s " %(self._where)
+                + ("SET %s = '%s' " %(what, self.escape(value))
+                + dst
+                + ("WHERE %s " %(self._where))
                 + ("AND address = '%s'" %(self.escape(address)))))
         # remove the cache
         self.uncache()
@@ -403,9 +408,15 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
         return int(count[0])
 
     # get member's name (slow method if you need many)
+    # due to the way escape() is built, names are stored in html
+    # format in the DB, hence the canonstr() to put them back to
+    # normal (TODO)
     def getMemberName(self, member):
         name = self.select_on('name', member)
         if len(name):
+          try:
+            return Utils.canonstr(name[0])
+          except:
             return name[0]
         self.__assertIsMember(member)
 
