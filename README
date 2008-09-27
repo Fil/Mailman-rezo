@@ -18,6 +18,8 @@ MysqlMemberAdaptor.py
 ---------------------
 
 My first step was to try switching to MySQL for backend. I started with Kev Green's MysqlMemberAdaptor.py (that has been discussed recently on this list).
+The original MysqlMemberAdaptor.py is available from Kev's site at
+http://www.orenet.co.uk/ ; see http://www.orenet.co.uk/opensource/MailmanMysql/
 
 I had decided, for some reason, to use its 'flat' mode of operation, but realised, first, that it was not working on my site, and then that this code could not be maintained as it was, and had to be 'reunited'. (I also wanted the 'flat' table to be called something else than `mailman_mysql`, which I can't type fast enough :-)
 
