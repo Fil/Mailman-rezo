@@ -294,14 +294,15 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                 + ("AND address = '%s'" %(self.escape(address)))))
         # remove the cache
         self.uncache()
-    
 
     def escape(self, value):
         # transforms accents into html entities (&#233;)
-        # TODO: find out which language is current (here: uses iso-8859-1)
+        # TODO: find out which language is current (here: assumes iso-8859-1)
         value = Utils.uncanonstr(value)
-        # addslashes before " and '
+
+        # add slashes before " and '
         return MySQLdb.escape_string(value)
+
 
     ############################### Now the active codes #######
     #
