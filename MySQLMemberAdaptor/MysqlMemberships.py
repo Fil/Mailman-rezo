@@ -428,7 +428,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
     # topics
     def getMemberTopics(self, member):
         topics = self.select_on('topics_userinterest',member)
-        if len(topics):
+        if len(topics) and isinstance(topics[0], str):
             return topics[0].split(',')
         return []
         self.__assertIsMember(member)
