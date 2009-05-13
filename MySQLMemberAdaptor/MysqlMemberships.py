@@ -401,7 +401,7 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
             "(address REGEXP '%s' OR name REGEXP '%s')"
             %( self.escape(regexp), self.escape(regexp) ) )
 
-    # new method to get faster results when querying the numer of subscribers
+    # new method to get faster results when querying the number of subscribers
     def getMembersCount(self, reason=None):
         if reason:
             where = " AND digest='%s'" %reason
@@ -703,3 +703,26 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
                 + ("WHERE %s " %(self._where))
                 + ("AND address = '%s'" %( self.escape(member) )))
 
+
+
+# this function can be plugged into Mailman.MailList.Save
+# it saves a copy of a few list's attributes into a database
+def SaveToDb(self,dict):
+    query = 'REPLACE lists (listname,moderation,advertised,new_member_options,subscribe_policy,host_name,description,info,count) ' \
+        " VALUES ('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % (\
+        self.internal_name(), \
+        self.default_member_moderation, \
+        self.advertised, \
+        self.new_member_options, \
+        self.subscribe_policy, \
+        self.host_name, \
+        self.escape(self.description), \
+        self.escape(self.info), \
+        self.getMembersCount() \
+        )
+    syslog('mysql', query)
+    try:
+        self.query(query)
+    except Exception,e:
+        syslog('mysql', 'error %s'%e)
+    pass
