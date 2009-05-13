@@ -427,9 +427,10 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     # topics
     def getMemberTopics(self, member):
-        topic = self.select_on('topics_userinterest',member)
-        if len(topic):
-            return topic[0]
+        topics = self.select_on('topics_userinterest',member)
+        if len(topics):
+            return topics[0].split(',')
+        return []
         self.__assertIsMember(member)
 
     # delivery status
@@ -646,6 +647,10 @@ class MysqlMemberships(MemberAdaptor.MemberAdaptor):
 
     def setMemberTopics(self, member, topics):
 #        assert self.__mlist.Locked()
+        if isinstance(topics,list):
+          topics=",".join(topics)
+        else:
+          topics=""
         self.query("UPDATE `%s` " %(self._table)
             + ("SET topics_userinterest = '%s' " %(
               self.escape(topics) ))
