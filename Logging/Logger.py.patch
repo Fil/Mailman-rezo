@@ -1,0 +1,12 @@
+diff -rpu mailman-dist/Mailman/Logging/Logger.py mailman/Mailman/Logging/Logger.py
+--- mailman-dist/Mailman/Logging/Logger.py	2013-11-07 09:10:21.458029323 +0100
++++ mailman/Mailman/Logging/Logger.py	2013-11-05 21:37:27.000000000 +0100
+@@ -43,6 +43,7 @@ class Logger:
+         Otherwise, the file is created only when there are writes pending.
+         """
+         self.__filename = os.path.join(mm_cfg.LOG_DIR, category)
++        self.__filename += '.log'
+         self.__fp = None
+         self.__nofail = nofail
+         self.__encoding = LOG_ENCODING or sys.getdefaultencoding()
+

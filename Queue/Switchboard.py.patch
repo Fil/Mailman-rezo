@@ -1,0 +1,14 @@
+diff -rpu mailman-dist/Mailman/Queue/Switchboard.py mailman/Mailman/Queue/Switchboard.py
+--- mailman-dist/Mailman/Queue/Switchboard.py	2013-11-07 09:10:21.674022987 +0100
++++ mailman/Mailman/Queue/Switchboard.py	2013-11-05 21:50:54.000000000 +0100
+@@ -161,7 +161,8 @@ class Switchboard:
+             data = cPickle.load(fp)
+         finally:
+             fp.close()
+-        if data.get('_parsemsg'):
++        #if data.get('_parsemsg'):
++        if isinstance(msg, str):
+             msg = email.message_from_string(msg, Message.Message)
+         return msg, data
+ 
+

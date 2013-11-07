@@ -1,0 +1,19 @@
+diff -rpu mailman-dist/Mailman/MemberAdaptor.py mailman/Mailman/MemberAdaptor.py
+--- mailman-dist/Mailman/MemberAdaptor.py	2013-11-07 09:10:21.358032255 +0100
++++ mailman/Mailman/MemberAdaptor.py	2013-11-05 21:36:47.000000000 +0100
+@@ -63,6 +63,14 @@ class MemberAdaptor:
+         """Get the LCE for all the members of the mailing list."""
+         raise NotImplementedError
+ 
++    def getMembersMatching(self, regexp):
++        """Get all the members who match regexp"""
++        raise NotImplementedError
++    
++    def getMembersCount(self, reason):
++        """Get the count of all members (reason=Y for digest, N for regular)"""
++        raise NotImplementedError
++
+     def getRegularMemberKeys(self):
+         """Get the LCE for all regular delivery members (i.e. non-digest)."""
+         raise NotImplementedError
+

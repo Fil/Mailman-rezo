@@ -1,0 +1,22 @@
+diff -rpu mailman-dist/Mailman/Archiver/Archiver.py mailman/Mailman/Archiver/Archiver.py
+--- mailman-dist/Mailman/Archiver/Archiver.py	2013-11-07 09:10:21.482028619 +0100
++++ mailman/Mailman/Archiver/Archiver.py	2013-11-05 21:46:15.000000000 +0100
+@@ -26,6 +26,7 @@ import os
+ import errno
+ import traceback
+ import re
++import time
+ from cStringIO import StringIO
+ 
+ from Mailman import mm_cfg
+@@ -133,7 +134,8 @@ class Archiver:
+     def ArchiveFileName(self):
+         """The mbox name where messages are left for archive construction."""
+         return os.path.join(self.archive_dir() + '.mbox',
+-                            self.internal_name() + '.mbox')
++                            ("%04d%02d" % time.localtime()[0:2]) + '.mbox')
++                            #self.internal_name() + '.mbox')
+ 
+     def GetBaseArchiveURL(self):
+         url = self.GetScriptURL('private', absolute=1) + '/'
+

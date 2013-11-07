@@ -1,0 +1,22 @@
+diff -rpu mailman-dist/Mailman/MailList.py mailman/Mailman/MailList.py
+--- mailman-dist/Mailman/MailList.py	2013-11-07 09:10:21.354032372 +0100
++++ mailman/Mailman/MailList.py	2013-11-05 21:32:46.000000000 +0100
+@@ -70,6 +70,7 @@ from Mailman import Message
+ from Mailman import Site
+ from Mailman import i18n
+ from Mailman.Logging.Syslog import syslog
++from Mailman.MysqlMemberships import MysqlMemberships
+ 
+ _ = i18n._
+ 
+@@ -102,7 +103,8 @@ class MailList(HTMLFormatter, Deliverer,
+         # Initialize volatile attributes
+         self.InitTempVars(name)
+         # Default membership adaptor class
+-        self._memberadaptor = OldStyleMemberships(self)
++        #self._memberadaptor = OldStyleMemberships(self)
++        self._memberadaptor = MysqlMemberships(self)
+         # This extension mechanism allows list-specific overrides of any
+         # method (well, except __init__(), InitTempVars(), and InitVars()
+         # I think).  Note that fullpath() will return None when we're creating
+
